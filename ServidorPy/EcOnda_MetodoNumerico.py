@@ -76,19 +76,22 @@ cycles = int(dt * f_hz)
 
 print(f"Ciclos de cómputo: {cycles}")
 print(f"Tiempo de cómputo: {dt:.5f} s")
+print(f"tiempo: {d_t: .5f} s")
 print("Simulación completada.")
 
 
 # Visualización
 
-for i in range(0, n_t, int(n_t/10)):
-    plt.plot(u[:,i])
-    plt.title("Ecuación de la onda - método numérico instante - t = {:.2f}s".format(i*d_t))
-    plt.grid()
-    plt.xlabel("Posición (x) [cm]")
-    plt.ylabel("Desplazamiento (u) [cm]")
+plt.title("Ecuación de la onda - método numérico instante - t = {:.2f}s".format(i * d_t))
+plt.grid()
+plt.xlabel("Posición (x) [cm]")
+plt.ylabel("Desplazamiento (u) [cm]")
+
+step = int(n_t/1000)
+for i in range(0, n_t, step):
+    plt.clf()  # limpia la figura antes de redibujar
     plt.ylim(-25, 25)
-    plt.xlim(0, L*100)
-    plt.show()
-    input("Presiona Enter para avanzar...")
-    plt.close()
+    plt.xlim(0, L * 100)
+    plt.plot(u[:, i])
+    plt.pause(step*d_t)  # pausa en segundos entre frames
+plt.close()
