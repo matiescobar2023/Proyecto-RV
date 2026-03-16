@@ -29,7 +29,7 @@ def ecuacion_onda(L, T, c):
                 else:
                     u[j, i] = 2 * u[j, i - 1] - u[j, i - 2] + (c * d_t / d_x) ** 2 * (
                                 u[j + 1, i - 1] - 2 * u[j, i - 1] + u[j - 1, i - 1])
-
+    
     return u.tolist()
 
 def g_x(x):
