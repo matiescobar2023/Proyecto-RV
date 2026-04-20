@@ -35,6 +35,7 @@ func main() {
 	router.POST("/register", registerHandler)                 // registro de alumno
 	router.GET("/solve", RateLimitMiddleware(), solveHandler) // calculo — limitado a 1 req/5s por IP
 	router.POST("/sync/set", syncSetHandler)                  // asistente activa sincronizacion
+	router.POST("/sync/clear", syncClearAsistenteHandler)     // asistente desactiva sincronizacion
 
 	router.Run(":8080")
 }
