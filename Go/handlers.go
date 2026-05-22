@@ -1,6 +1,7 @@
 package main
 
 import (
+	"net"
 	"net/http"
 	"strconv"
 
@@ -92,6 +93,11 @@ func solveHandler(c *gin.Context) {
 			c.JSON(http.StatusBadRequest, gin.H{"error": "Parámetros fuera de rango"})
 			return
 		}
+
+		if inicial != "seno" && inicial != "triangular" && inicial != "gauss" {
+			c.JSON(http.StatusBadRequest, gin.H{"error": "Condición inicial inválida"})
+			return
+		}
 	}
 
 	result := ecuacion_onda(L, T, cw, inicial)
@@ -143,5 +149,58 @@ func syncSetHandler(c *gin.Context) {
 		Inicial: req.Inicial,
 	})
 
+	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// infoHandler devuelve la IP de la interfaz activa principal y el puerto del servidor.
+func infoHandler(c *gin.Context) {
+	port := "8080"
+	if la, ok := c.Request.Context().Value(http.LocalAddrContextKey).(net.Addr); ok {
+		if _, p, err := net.SplitHostPort(la.String()); err == nil {
+			port = p
+		}
+	}
+	c.JSON(http.StatusOK, gin.H{
+		"ip":   routedLocalIP(),
+		"port": port,
+	})
+}
+
+// routedLocalIP devuelve la IP de la interfaz con la ruta por defecto (WiFi, Ethernet activa, etc.).
+// Usa un Dial UDP a una IP externa para que el kernel resuelva el ruteo sin enviar ningún paquete.
+// Si no hay ruta por defecto, cae en la primera IPv4 privada no link-local.
+func routedLocalIP() string {
+	conn, err := net.Dial("udp4", "8.8.8.8:80")
+	if err == nil {
+		defer conn.Close()
+		return conn.LocalAddr().(*net.UDPAddr).IP.String()
+	}
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "?"
+	}
+	for _, addr := range addrs {
+		if ipnet, ok := addr.(*net.IPNet); ok {
+			if ip := ipnet.IP.To4(); ip != nil && !ip.IsLoopback() && !ip.IsLinkLocalUnicast() {
+				return ip.String()
+			}
+		}
+	}
+	return "?"
+}
+
+// syncClearAsistenteHandler desactiva la sincronizacion desde la app movil.
+// Solo puede ser llamado por un cliente con rol de asistente.
+// Responde:
+//   - 200 si la sincronizacion se desactivo correctamente
+//   - 403 si el cliente no tiene rol de asistente
+func syncClearAsistenteHandler(c *gin.Context) {
+	cliente := estado.BuscarCliente(c.ClientIP())
+	if cliente == nil || cliente.Rol != rolAsistente {
+		c.JSON(http.StatusForbidden, gin.H{"error": "Se requiere rol de asistente"})
+		return
+	}
+
+	estado.DesactivarSync()
 	c.JSON(http.StatusOK, gin.H{"ok": true})
 }

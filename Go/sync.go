@@ -53,6 +53,8 @@ func (e *estadoGlobal) RegistrarCliente(ip, legajo, nombre string) {
 	defer e.mu.Unlock()
 
 	if c, existe := e.clientes[ip]; existe {
+		c.Legajo = legajo
+		c.Nombre = nombre
 		c.UltimoRequest = time.Now()
 		return
 	}
@@ -78,13 +80,13 @@ func (e *estadoGlobal) ActualizarRequest(ip string) {
 }
 
 // Clientes devuelve todos los clientes registrados desde que el servidor arranco.
-func (e *estadoGlobal) Clientes() []*Cliente {
+func (e *estadoGlobal) Clientes() []Cliente {
 	e.mu.RLock()
 	defer e.mu.RUnlock()
 
-	lista := make([]*Cliente, 0, len(e.clientes))
+	lista := make([]Cliente, 0, len(e.clientes))
 	for _, c := range e.clientes {
-		lista = append(lista, c)
+		lista = append(lista, *c)
 	}
 	return lista
 }

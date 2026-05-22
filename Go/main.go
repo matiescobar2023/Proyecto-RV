@@ -22,7 +22,7 @@ func main() {
 
 	// Rutas protegidas del panel docente (requieren haber pasado /auth)
 	// Se iran agregando a medida que se desarrollen los modulos
-	admin := router.Group("/admin")
+	admin := router.Group("/admin", AdminAuthMiddleware())
 	{
 		admin.GET("/clients", clientesHandler)       // lista de alumnos registrados
 		admin.POST("/promote", promoverHandler)      // otorgar rol asistente
@@ -32,6 +32,7 @@ func main() {
 	}
 
 	// Rutas de la app movil
+	router.GET("/info", infoHandler)
 	router.POST("/register", registerHandler)                 // registro de alumno
 	router.GET("/solve", RateLimitMiddleware(), solveHandler) // calculo — limitado a 1 req/5s por IP
 	router.POST("/sync/set", syncSetHandler)                  // asistente activa sincronizacion

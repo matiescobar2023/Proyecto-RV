@@ -5,6 +5,7 @@ import (
 	"math"
 	"net/http"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -22,15 +23,39 @@ var (
 	ipsAutorizadasMu sync.RWMutex
 )
 
+type rateLimiterEntry struct {
+	limiter  *rate.Limiter
+	lastSeen atomic.Int64
+}
+
 var limiters sync.Map
 
 func getLimiter(ip string) *rate.Limiter {
+	now := time.Now().Unix()
 	if v, ok := limiters.Load(ip); ok {
-		return v.(*rate.Limiter)
+		e := v.(*rateLimiterEntry)
+		e.lastSeen.Store(now)
+		return e.limiter
 	}
-	lim := rate.NewLimiter(rate.Every(5*time.Second), 1)
-	actual, _ := limiters.LoadOrStore(ip, lim)
-	return actual.(*rate.Limiter)
+	e := &rateLimiterEntry{limiter: rate.NewLimiter(rate.Every(5*time.Second), 1)}
+	e.lastSeen.Store(now)
+	actual, _ := limiters.LoadOrStore(ip, e)
+	return actual.(*rateLimiterEntry).limiter
+}
+
+func init() {
+	go func() {
+		for {
+			time.Sleep(10 * time.Minute)
+			cutoff := time.Now().Add(-10 * time.Minute).Unix()
+			limiters.Range(func(k, v any) bool {
+				if v.(*rateLimiterEntry).lastSeen.Load() < cutoff {
+					limiters.Delete(k)
+				}
+				return true
+			})
+		}
+	}()
 }
 
 func RateLimitMiddleware() gin.HandlerFunc {
@@ -97,6 +122,17 @@ func authHandler(c *gin.Context) {
 
 	autorizarIP(c.ClientIP())
 	c.JSON(http.StatusOK, gin.H{"ok": true})
+}
+
+// AdminAuthMiddleware protege las rutas /admin, requiriendo haber pasado /auth.
+func AdminAuthMiddleware() gin.HandlerFunc {
+	return func(c *gin.Context) {
+		if !ipAutorizada(c.ClientIP()) {
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "No autorizado"})
+			return
+		}
+		c.Next()
+	}
 }
 
 // panelHandler sirve el panel.html solo si la IP del solicitante

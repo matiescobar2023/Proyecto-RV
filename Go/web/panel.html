@@ -34,7 +34,7 @@
   .shell {
     height: 100vh;
     display: grid;
-    grid-template-rows: 52px 1fr;
+    grid-template-rows: 60px 1fr;
     grid-template-columns: 340px 1fr;
     grid-template-areas:
       "topbar topbar"
@@ -45,15 +45,43 @@
   .topbar {
     grid-area: topbar;
     border-bottom: 1px solid var(--border);
-    display: flex;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
     align-items: center;
-    justify-content: space-between;
-    padding: 0 28px;
+    padding: 0 36px;
   }
 
-  .topbar-title { font-size: 1rem; font-weight: 500; }
+  .topbar-title {
+    font-size: 0.82rem;
+    font-weight: 400;
+    color: var(--muted);
+    letter-spacing: 0.04em;
+  }
 
-  .topbar-right { display: flex; align-items: center; gap: 20px; }
+  .topbar-server {
+    font-family: 'DM Mono', monospace;
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1px;
+    justify-self: center;
+  }
+  .srv-label {
+    font-size: 0.52rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+  .srv-addr {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0;
+  }
+  .srv-ip   { color: var(--text); font-weight: 500; font-size: 0.9rem; letter-spacing: 0.04em; }
+  .srv-sep  { color: var(--border); padding: 0 5px; font-size: 0.7rem; align-self: center; }
+  .srv-port { color: var(--muted); font-size: 0.72rem; letter-spacing: 0.06em; }
+
+  .topbar-right { display: flex; align-items: center; gap: 28px; justify-content: flex-end; }
 
   .sync-badge {
     font-family: 'DM Mono', monospace;
@@ -398,6 +426,14 @@
   <!-- TOPBAR -->
   <header class="topbar">
     <span class="topbar-title">Panel Docente</span>
+    <span class="topbar-server">
+      <span class="srv-label">servidor</span>
+      <span class="srv-addr">
+        <span class="srv-ip"   id="srvIp">—</span>
+        <span class="srv-sep">·</span>
+        <span class="srv-port" id="srvPort">—</span>
+      </span>
+    </span>
     <div class="topbar-right">
       <span class="sync-badge" id="syncBadge">Sin sincronizacion</span>
       <span class="topbar-meta" id="clock"></span>
@@ -502,6 +538,12 @@
   let lastTs      = 0;
   const FPS       = 40;
   const MS_PF     = 1000 / FPS;
+
+  // ── DIRECCIÓN DEL SERVIDOR ───────────────────────
+  fetch('/info').then(r => r.json()).then(d => {
+    document.getElementById('srvIp').textContent   = d.ip;
+    document.getElementById('srvPort').textContent = d.port;
+  }).catch(() => {});
 
   // ── RELOJ ────────────────────────────────────────
   function tickReloj() {
@@ -613,6 +655,12 @@
 
     try {
       const res  = await fetch(`/solve?L=${L}&T=${T}&c=${c}&inicial=${inicial}`);
+      if (res.status === 429) {
+        const data = await res.json().catch(() => ({}));
+        const wait = data.waitSeconds ? ` Esperá ${data.waitSeconds}s.` : '';
+        toast('Demasiadas peticiones.' + wait, true);
+        return;
+      }
       if (!res.ok) { toast('Parametros invalidos', true); return; }
       const data = await res.json();
       matrizU     = data.result;
@@ -665,7 +713,7 @@
 
     ctx.beginPath();
     for (let j = 0; j < n; j++) {
-      const x = px + (j / (n - 1)) * (W - px * 2);
+      const x = px + (n > 1 ? j / (n - 1) : 0.5) * (W - px * 2);
       const y = H / 2 - fila[j] * ampMax;
       j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }
@@ -681,7 +729,7 @@
     ctx.lineWidth   = 2;
     ctx.lineJoin    = 'round';
     for (let j = 0; j < n; j++) {
-      const x = px + (j / (n - 1)) * (W - px * 2);
+      const x = px + (n > 1 ? j / (n - 1) : 0.5) * (W - px * 2);
       const y = H / 2 - fila[j] * ampMax;
       j === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
     }

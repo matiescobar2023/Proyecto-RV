@@ -20,9 +20,6 @@ func ecuacion_onda(L, T, c float64, inicial string) [][]float64 {
 	var n_t int = int(math.Ceil(T * c / (CFL * d_x)))
 	d_t := T / float64(n_t)
 
-	var u_0_t float64 = 0
-	var u_L_t float64 = 0
-
 	u := make([][]float64, n_t)
 	for i := range u {
 		u[i] = make([]float64, n_x)
@@ -47,13 +44,13 @@ func ecuacion_onda(L, T, c float64, inicial string) [][]float64 {
 		}
 	default:
 		for j := 0; j < n_x; j++ {
-			u[0][j] = math.Sin(math.Pi * float64(j) * d_x)
+			u[0][j] = math.Sin(math.Pi * float64(j) * d_x / L)
 		}
 	}
 
 	for i := 0; i < n_t; i++ {
-		u[i][0] = u_0_t
-		u[i][n_x-1] = u_L_t
+		u[i][0] = 0
+		u[i][n_x-1] = 0
 	}
 
 	var1 := (c * d_t / d_x) * (c * d_t / d_x)
